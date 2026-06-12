@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des voitures</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+    <div th:replace="fragments/header :: appHeader"></div>
+    <div class="container">
+        <div class="page-header">
+            <h1>Gestion des voitures</h1>
+            <p class="subtitle">Gerer la flotte de vehicules disponibles.</p>
+        </div>
+
+        <div class="card">
+            <h2>Ajouter ou modifier une voiture</h2>
+            <form id="voitureForm">
+                <div class="field">
+                    <label for="marque">Marque *</label>
+                    <input type="text" id="marque" name="marque" required placeholder="Ex : Toyota Prius">
+                </div>
+                <div class="field">
+                    <label for="nbPlaces">Nombre de places *</label>
+                    <input type="number" id="nbPlaces" name="nbPlaces" required min="1" max="10">
+                </div>
+                <div class="field">
+                    <label for="typeCarburant">Type de carburant *</label>
+                    <select id="typeCarburant" name="typeCarburant" required>
+                        <option value="">Chargement...</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit">Enregistrer la voiture</button>
+                    <button type="button" class="btn-secondary" onclick="resetForm()">Reinitialiser</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Liste des voitures</h2>
+            <div id="voituresList">
+                <p class="subtitle">Chargement...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api/voitures';
+        const TYPE_CARBURANT_API_URL = '/api/type-carburants';
+
+        window.addEventListener('load', () => {
+            loadTypeCarburants();
+            loadVoitures();
+        });
+
+        function loadTypeCarburants(selectedValue = '') {
+            const select = document.getElementById('typeCarburant');
+            return fetch(TYPE_CARBURANT_API_URL)
+                .then(response => response.json())
+                .then(types => {
+                    let options = '<option value="">-- Choisir --</option>';
+                    types.forEach(type => {
+                        options += `<option value="${type}">${type}</option>`;
+                    });
+                    select.innerHTML = options;
+                    if (selectedValue) {
+                        select.value = selectedValue;
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    select.innerHTML = '<option value="">Aucun type disponible</option>';
+                });
+        }
+
+        function loadVoitures() {
+            fetch(API_URL)
+                .then(response => response.json())
+                .then(voitures => displayVoitures(voitures))
+                .catch(error => console.error('Erreur:', error));
+        }
+
+        function displayVoitures(voitures) {
+            const list = document.getElementById('voituresList');
+            if (voitures.length === 0) {
+                list.innerHTML = '<div class="empty">Aucune voiture enregistree.</div>';
+                return;
+            }
+
+            let html = '<table><thead><tr><th>Marque</th><th>Places</th><th>Carburant</th><th>Trajets</th><th>Etat</th><th>Actions</th></tr></thead><tbody>';
+            voitures.forEach(v => {
+                const status = v.state ? '<span class="status in-use">En utilisation</span>' : '<span class="status available">Disponible</span>';
+                html += `
+                    <tr>
+                        <td>${v.marque}</td>
+                        <td>${v.nbPlaces}</td>
+                        <td>${v.typeCarburant || ''}</td>
+                        <td>${v.nbTrajet}</td>
+                        <td>${status}</td>
+                        <td class="actions">
+                            <button class="btn-edit" onclick="editVoiture(${v.idVoiture})">Modifier</button>
+                            <button class="btn-delete" onclick="deleteVoiture(${v.idVoiture})">Supprimer</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            html += '</tbody></table>';
+            list.innerHTML = html;
+        }
+
+        document.getElementById('voitureForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = {
+                marque: document.getElementById('marque').value,
+                nbPlaces: parseInt(document.getElementById('nbPlaces').value, 10),
+                typeCarburant: document.getElementById('typeCarburant').value
+            };
+
+            const id = document.getElementById('voitureForm').dataset.voitureId;
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `${API_URL}/${id}` : API_URL;
+
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Voiture enregistree avec succes.');
+                    resetForm();
+                    loadVoitures();
+                } else {
+                    alert('Erreur lors de l\'enregistrement.');
+                }
+            })
+            .catch(error => console.error('Erreur:', error));
+        });
+
+        function editVoiture(id) {
+            fetch(`${API_URL}/${id}`)
+                .then(response => response.json())
+                .then(voiture => {
+                    document.getElementById('marque').value = voiture.marque;
+                    document.getElementById('nbPlaces').value = voiture.nbPlaces;
+                    loadTypeCarburants(voiture.typeCarburant);
+                    document.getElementById('voitureForm').dataset.voitureId = id;
+                    document.querySelector('button[type="submit"]').textContent = 'Mettre a jour la voiture';
+                })
+                .catch(error => console.error('Erreur:', error));
+        }
+
+        function deleteVoiture(id) {
+            if (confirm('Etes-vous sur de vouloir supprimer cette voiture ?')) {
+                fetch(`${API_URL}/${id}`, { method: 'DELETE' })
+                .then(response => {
+                    if (response.ok) {
+                        alert('Voiture supprimee.');
+                        loadVoitures();
+                    } else {
+                        alert('Erreur lors de la suppression.');
+                    }
+                })
+                .catch(error => console.error('Erreur:', error));
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('voitureForm').reset();
+            delete document.getElementById('voitureForm').dataset.voitureId;
+            document.querySelector('button[type="submit"]').textContent = 'Enregistrer la voiture';
+            loadTypeCarburants();
+        }
+    </script>
+</body>
+</html>

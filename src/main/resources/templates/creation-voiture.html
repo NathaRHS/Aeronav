@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nouvelle voiture</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+    <div th:replace="fragments/header :: appHeader"></div>
+    <div class="container">
+        <div class="page-header">
+            <h1>Nouvelle voiture</h1>
+            <p class="subtitle">Ajouter un vehicule a la flotte de transport.</p>
+        </div>
+
+        <div class="card">
+            <form id="voitureForm">
+                <div class="field">
+                    <label for="marque">Marque</label>
+                    <input id="marque" type="text" required placeholder="Ex : Toyota Yaris">
+                </div>
+                <div class="field">
+                    <label for="nbPlaces">Nombre de places</label>
+                    <input id="nbPlaces" type="number" min="1" required>
+                </div>
+                <div class="field">
+                    <label for="typeCarburant">Carburant</label>
+                    <select id="typeCarburant" required>
+                        <option value="">Chargement...</option>
+                    </select>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit">Creer la voiture</button>
+                    <a class="btn btn-secondary" href="/planning">Retour planning</a>
+                </div>
+            </form>
+
+            <div id="msg" class="message"></div>
+        </div>
+    </div>
+
+<script>
+    async function loadTypeCarburants() {
+        const select = document.getElementById('typeCarburant');
+        try {
+            const response = await fetch('/api/type-carburants');
+            if (!response.ok) {
+                throw new Error('chargement types carburant impossible');
+            }
+
+            const types = await response.json();
+            let options = '<option value="">Choisir</option>';
+            types.forEach(type => {
+                options += `<option value="${type}">${type}</option>`;
+            });
+            select.innerHTML = options;
+        } catch (err) {
+            select.innerHTML = '<option value="">Aucun type disponible</option>';
+        }
+    }
+
+    window.addEventListener('load', loadTypeCarburants);
+
+    document.getElementById('voitureForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const msg = document.getElementById('msg');
+        msg.textContent = '';
+        msg.className = 'message';
+
+        const payload = {
+            marque: document.getElementById('marque').value.trim(),
+            nbPlaces: parseInt(document.getElementById('nbPlaces').value, 10),
+            typeCarburant: document.getElementById('typeCarburant').value
+        };
+
+        try {
+            const response = await fetch('/api/voitures', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error('creation impossible');
+            }
+
+            msg.className = 'message message--success';
+            msg.textContent = 'Voiture creee avec succes.';
+            this.reset();
+        } catch (err) {
+            msg.className = 'message message--error';
+            msg.textContent = 'Erreur lors de la creation de la voiture.';
+        }
+    });
+</script>
+</body>
+</html>

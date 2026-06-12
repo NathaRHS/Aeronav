@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation - AeroNav</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="stylesheet" href="/css/app.css">
+    <style>
+        .doc-layout {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 40px;
+            align-items: start;
+        }
+        .doc-toc {
+            position: sticky;
+            top: 24px;
+            font-size: 14px;
+        }
+        .doc-toc h4 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+            margin: 0 0 10px;
+        }
+        .doc-toc a {
+            display: block;
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 5px 0;
+            border-left: 2px solid transparent;
+            padding-left: 12px;
+            transition: color 0.15s ease, border-color 0.15s ease;
+        }
+        .doc-toc a:hover {
+            color: var(--text);
+            border-left-color: var(--text);
+        }
+        .doc-content section {
+            margin-bottom: 40px;
+            scroll-margin-top: 24px;
+        }
+        .doc-content h2 {
+            font-size: 22px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 18px;
+        }
+        .doc-content p { margin: 0 0 14px; }
+        .doc-content ul, .doc-content ol { margin: 0 0 14px; padding-left: 22px; }
+        .doc-content li { margin-bottom: 6px; }
+        code {
+            font-family: "SF Mono", Menlo, Consolas, monospace;
+            font-size: 13px;
+            background: var(--hover);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 1px 6px;
+        }
+        pre {
+            background: #111111;
+            color: #f5f5f7;
+            border-radius: 8px;
+            padding: 16px 18px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 0 0 16px;
+        }
+        pre code {
+            background: none;
+            border: none;
+            color: inherit;
+            padding: 0;
+        }
+        .pill {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 4px;
+            padding: 2px 8px;
+            margin-right: 8px;
+            border: 1px solid var(--text);
+            color: var(--text);
+        }
+        .pill--post { background: var(--text); color: #fff; }
+        @media (max-width: 860px) {
+            .doc-layout { grid-template-columns: 1fr; }
+            .doc-toc { position: static; }
+        }
+    </style>
+</head>
+<body>
+    <div th:replace="fragments/header :: appHeader"></div>
+    <div class="container">
+        <div class="page-header">
+            <h1>Documentation</h1>
+            <p class="subtitle">AeroNav - Systeme de gestion des reservations et d'allocation de navettes.</p>
+        </div>
+
+        <div class="doc-layout">
+            <nav class="doc-toc">
+                <h4>Sommaire</h4>
+                <a href="#presentation">Presentation</a>
+                <a href="#fonctionnalites">Fonctionnalites</a>
+                <a href="#algorithme">Algorithme d'allocation</a>
+                <a href="#modele">Modele de donnees</a>
+                <a href="#pages">Pages</a>
+                <a href="#api">API REST</a>
+                <a href="#stack">Stack technique</a>
+                <a href="#demarrage">Demarrage</a>
+            </nav>
+
+            <div class="doc-content">
+                <section id="presentation">
+                    <h2>Presentation</h2>
+                    <p>
+                        AeroNav est une application web de gestion d'un service de navettes entre un aeroport
+                        et des hotels. Elle permet d'enregistrer les reservations de clients a leur arrivee,
+                        de gerer la flotte de vehicules et les hotels, puis d'optimiser automatiquement
+                        l'affectation des voitures aux clients en regroupant les trajets compatibles.
+                    </p>
+                    <p>
+                        Le coeur de l'application est un moteur de planification qui, pour une date donnee,
+                        repartit les reservations dans les vehicules disponibles selon des regles de capacite,
+                        de disponibilite et de proximite.
+                    </p>
+                </section>
+
+                <section id="fonctionnalites">
+                    <h2>Fonctionnalites</h2>
+                    <ul>
+                        <li><strong>Reservations</strong> : liste, creation et suppression des reservations clients.</li>
+                        <li><strong>Hotels</strong> : CRUD complet (nom, adresse, distance par rapport a l'aeroport).</li>
+                        <li><strong>Voitures</strong> : CRUD de la flotte (marque, nombre de places, type de carburant).</li>
+                        <li><strong>Distances entre hotels</strong> : gestion des distances utilisees pour le regroupement.</li>
+                        <li><strong>Planning</strong> : visualisation des groupes de reservations et des voitures attribuees pour une date.</li>
+                        <li><strong>Optimisation</strong> : allocation automatique des vehicules selon l'algorithme metier.</li>
+                    </ul>
+                </section>
+
+                <section id="algorithme">
+                    <h2>Algorithme d'allocation</h2>
+                    <p>L'allocation des vehicules repose sur trois parametres constants :</p>
+                    <ul>
+                        <li><strong>Temps d'attente</strong> : 30 minutes (delai avant qu'une voiture reparte / soit liberee).</li>
+                        <li><strong>Vitesse moyenne</strong> : 20 km/h.</li>
+                        <li><strong>Distance de proximite</strong> : 5 km (seuil pour regrouper deux hotels).</li>
+                    </ul>
+
+                    <h3>Principe general</h3>
+                    <ol>
+                        <li>Recuperer et <strong>trier les reservations par heure d'arrivee</strong> (ordre croissant).</li>
+                        <li>Pour chaque reservation, chercher les voitures <strong>disponibles et liberees a temps</strong>.</li>
+                        <li>Filtrer par <strong>capacite</strong> : au moins le nombre de personnes requis en places libres.</li>
+                        <li>Selectionner la meilleure voiture selon les criteres ci-dessous.</li>
+                        <li>Mettre a jour l'etat du vehicule : places restantes et heure de liberation
+                            (<code>heure d'arrivee + 30 min</code>).</li>
+                    </ol>
+
+                    <h3>Criteres de selection (dans l'ordre)</h3>
+                    <ol>
+                        <li>Voiture avec la <strong>plus petite capacite</strong> suffisante.</li>
+                        <li>En cas d'egalite, celle qui a <strong>deja roule</strong> (plus de trajets).</li>
+                        <li>En cas d'egalite, <strong>preference de carburant</strong> (Diesel prioritaire).</li>
+                        <li>En dernier recours, choix <strong>aleatoire</strong>.</li>
+                    </ol>
+
+                    <h3>Regroupement de clients</h3>
+                    <p>Un client peut etre ajoute a une voiture deja affectee si toutes ces conditions sont reunies :</p>
+                    <ul>
+                        <li>il reste <strong>assez de places</strong> ;</li>
+                        <li>son heure d'arrivee est anterieure a <code>heure de liberation + temps d'attente</code> ;</li>
+                        <li>il vise le <strong>meme hotel</strong>, ou un hotel situe a <strong>moins de 5 km</strong>.</li>
+                    </ul>
+                </section>
+
+                <section id="modele">
+                    <h2>Modele de donnees</h2>
+                    <table>
+                        <thead>
+                            <tr><th>Entite</th><th>Champs principaux</th><th>Relations</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Hotel</strong></td>
+                                <td>nom, adresse, distanceFromAeroport, isAeroport</td>
+                                <td>1 hotel - N reservations</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Reservation</strong></td>
+                                <td>nom, prenom, nombrePersonnes, dateHeureArrivee</td>
+                                <td>N reservations - 1 hotel</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Voiture</strong></td>
+                                <td>marque, nbPlaces, typeCarburant, nbTrajet</td>
+                                <td>N voitures - 1 type carburant</td>
+                            </tr>
+                            <tr>
+                                <td><strong>DistanceHotel</strong></td>
+                                <td>idHotelDepart, idHotelArrivee, distanceEntreHotel</td>
+                                <td>relie deux hotels</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Planning</strong></td>
+                                <td>heureDepart, heureLiberee, dureeMinutes</td>
+                                <td>associe 1 reservation a 1 voiture (non persiste)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="pages">
+                    <h2>Pages</h2>
+                    <table>
+                        <thead>
+                            <tr><th>Route</th><th>Description</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>/</code></td><td>Redirige vers la page d'accueil</td></tr>
+                            <tr><td><code>/welcome.html</code></td><td>Page d'accueil</td></tr>
+                            <tr><td><code>/planning</code></td><td>Planning des reservations par date</td></tr>
+                            <tr><td><code>/reservations</code></td><td>Liste des reservations</td></tr>
+                            <tr><td><code>/reservations/creation</code></td><td>Creation d'une reservation</td></tr>
+                            <tr><td><code>/hotels</code></td><td>Gestion des hotels (CRUD)</td></tr>
+                            <tr><td><code>/voitures</code></td><td>Gestion des voitures (CRUD)</td></tr>
+                            <tr><td><code>/voitures/creation</code></td><td>Creation d'une voiture</td></tr>
+                            <tr><td><code>/distance-hotels</code></td><td>Gestion des distances entre hotels</td></tr>
+                            <tr><td><code>/documentation</code></td><td>Cette page</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="api">
+                    <h2>API REST</h2>
+                    <h3>Reservations <code>/api/reservations</code></h3>
+                    <p>
+                        <span class="pill">GET</span> liste &middot;
+                        <span class="pill">GET</span> <code>/{id}</code> &middot;
+                        <span class="pill pill--post">POST</span> creer &middot;
+                        <span class="pill">PUT</span> <code>/{id}</code> &middot;
+                        <span class="pill">DELETE</span> <code>/{id}</code>
+                    </p>
+                    <p>
+                        <span class="pill">GET</span> <code>/filtered?date=YYYY-MM-DD</code> &middot;
+                        <span class="pill pill--post">POST</span> <code>/optimize/{date}</code> &middot;
+                        <span class="pill">GET</span> <code>/groupes</code>
+                    </p>
+
+                    <h3>Hotels <code>/api/hotels</code></h3>
+                    <p>
+                        <span class="pill">GET</span> liste &middot;
+                        <span class="pill">GET</span> <code>/{id}</code> &middot;
+                        <span class="pill pill--post">POST</span> creer &middot;
+                        <span class="pill">PUT</span> <code>/{id}</code> &middot;
+                        <span class="pill">DELETE</span> <code>/{id}</code> &middot;
+                        <span class="pill">GET</span> <code>/{id}/reservations</code>
+                    </p>
+
+                    <h3>Voitures <code>/api/voitures</code></h3>
+                    <p>
+                        <span class="pill">GET</span> liste &middot;
+                        <span class="pill">GET</span> <code>/{id}</code> &middot;
+                        <span class="pill pill--post">POST</span> creer &middot;
+                        <span class="pill">PUT</span> <code>/{id}</code> &middot;
+                        <span class="pill">DELETE</span> <code>/{id}</code> &middot;
+                        <span class="pill">GET</span> <code>/plus-petite-place</code>
+                    </p>
+
+                    <h3>Autres</h3>
+                    <p>
+                        <span class="pill">CRUD</span> <code>/api/distance-hotels</code> &middot;
+                        <span class="pill">GET</span> <code>/api/type-carburants</code>
+                    </p>
+                </section>
+
+                <section id="stack">
+                    <h2>Stack technique</h2>
+                    <ul>
+                        <li><strong>Backend</strong> : Java 8+, Spring Boot 2.7.18, Spring Framework 5.3.33, Spring MVC.</li>
+                        <li><strong>Persistance</strong> : JPA (javax 2.2), Hibernate 5.6.15, MySQL 8.</li>
+                        <li><strong>Vues</strong> : Thymeleaf, HTML5, CSS3, JavaScript (Fetch API).</li>
+                        <li><strong>Build</strong> : Maven.</li>
+                    </ul>
+                </section>
+
+                <section id="demarrage">
+                    <h2>Demarrage</h2>
+                    <p>Creer la base de donnees MySQL puis lancer l'application :</p>
+<pre><code>CREATE DATABASE reservationnavettejpa;
+
+mvn clean install
+mvn spring-boot:run</code></pre>
+                    <p>
+                        La configuration se trouve dans <code>src/main/resources/application.properties</code>
+                        (port <code>8082</code>, identifiants MySQL). L'application est alors accessible sur
+                        <code>http://localhost:8082/</code>.
+                    </p>
+                </section>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

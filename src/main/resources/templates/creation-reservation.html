@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nouvelle reservation</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+    <div th:replace="fragments/header :: appHeader"></div>
+    <div class="container">
+        <div class="page-header">
+            <h1>Nouvelle reservation</h1>
+            <p class="subtitle">Enregistrer une arrivee client et l'hotel associe.</p>
+        </div>
+
+        <div class="card">
+            <form id="reservationForm">
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="nom">Nom</label>
+                        <input id="nom" type="text" required>
+                    </div>
+                    <div class="field">
+                        <label for="prenom">Prenom</label>
+                        <input id="prenom" type="text" required>
+                    </div>
+                    <div class="field">
+                        <label for="nombrePersonnes">Nombre de personnes</label>
+                        <input id="nombrePersonnes" type="number" min="1" required>
+                    </div>
+                    <div class="field">
+                        <label for="dateHeureArrivee">Date et heure d'arrivee</label>
+                        <input id="dateHeureArrivee" type="datetime-local" required>
+                    </div>
+                    <div class="field field--full">
+                        <label for="idHotel">Hotel</label>
+                        <select id="idHotel" required>
+                            <option value="">Chargement des hotels...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit">Creer la reservation</button>
+                    <a class="btn btn-secondary" href="/planning">Retour planning</a>
+                </div>
+            </form>
+
+            <div id="msg" class="message"></div>
+        </div>
+    </div>
+
+<script>
+    async function loadHotels() {
+        const select = document.getElementById('idHotel');
+        try {
+            const response = await fetch('/api/hotels');
+            const hotels = await response.json();
+            select.innerHTML = '<option value="">Choisir un hotel</option>';
+            hotels.forEach(h => {
+                const option = document.createElement('option');
+                option.value = h.idHotel;
+                option.textContent = h.nom;
+                select.appendChild(option);
+            });
+        } catch (err) {
+            select.innerHTML = '<option value="">Erreur chargement hotels</option>';
+        }
+    }
+
+    document.getElementById('reservationForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const msg = document.getElementById('msg');
+        msg.textContent = '';
+        msg.className = 'message';
+
+        const payload = {
+            nom: document.getElementById('nom').value.trim(),
+            prenom: document.getElementById('prenom').value.trim(),
+            nombrePersonnes: parseInt(document.getElementById('nombrePersonnes').value, 10),
+            dateHeureArrivee: document.getElementById('dateHeureArrivee').value,
+            hotel: { idHotel: parseInt(document.getElementById('idHotel').value, 10) }
+        };
+
+        try {
+            const response = await fetch('/api/reservations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error('creation impossible');
+            }
+
+            msg.className = 'message message--success';
+            msg.textContent = 'Reservation creee avec succes.';
+            this.reset();
+        } catch (err) {
+            msg.className = 'message message--error';
+            msg.textContent = 'Erreur lors de la creation de la reservation.';
+        }
+    });
+
+    loadHotels();
+</script>
+</body>
+</html>

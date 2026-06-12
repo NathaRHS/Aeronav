@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Affectation des voitures par groupe</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+    <div th:replace="fragments/header :: appHeader"></div>
+    <div class="container">
+        <div class="page-header">
+            <h1>Affectation des voitures par groupe</h1>
+            <p class="subtitle">Repartition des passagers et des vehicules pour une date donnee.</p>
+        </div>
+
+        <div class="toolbar">
+            <div class="field">
+                <label for="dateInput">Date</label>
+                <input type="date" id="dateInput">
+            </div>
+            <button onclick="changeDate()">Afficher les reservations</button>
+        </div>
+
+        <script>
+            function initializeDatePicker() {
+                const params = new URLSearchParams(window.location.search);
+                const currentDate = params.get('date') || new Date().toISOString().split('T')[0];
+                document.getElementById('dateInput').value = currentDate;
+            }
+
+            function changeDate() {
+                const selectedDate = document.getElementById('dateInput').value;
+                if (selectedDate) {
+                    window.location.href = '/api/reservations/groupes?date=' + selectedDate;
+                }
+            }
+
+            window.addEventListener('DOMContentLoaded', initializeDatePicker);
+        </script>
+
+        <div th:if="${groupedReservations != null}">
+            <div th:each="reservations, groupStat : ${groupedReservations}" class="group">
+                <div class="group__title">Groupe <span th:text="${groupStat.index + 1}"></span></div>
+
+                <div class="info-bar">
+                    <span th:text="${reservations.size()} + ' reservation(s)'"></span>
+                </div>
+
+                <div th:if="${planningsByGroup != null}">
+                    <div th:each="planning, planStat : ${planningsByGroup[groupStat.index]}"
+                         th:if="${planning.voiture != null}">
+
+                        <div class="detail-card" th:if="${planStat.first or planningsByGroup[groupStat.index][planStat.index - 1].voiture == null or planning.voiture.idVoiture != planningsByGroup[groupStat.index][planStat.index - 1].voiture.idVoiture}">
+
+                            <div class="detail-grid">
+                                <div class="detail-item">
+                                    <span class="detail-label">Marque</span>
+                                    <span th:text="${planning.voiture.marque}"></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Carburant</span>
+                                    <span th:text="${planning.voiture.typeCarburant}"></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Places</span>
+                                    <span th:text="${planning.voiture.nbPlaces}"></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Vehicule</span>
+                                    <span th:text="'ID ' + ${planning.voiture.idVoiture}"></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Depart</span>
+                                    <span th:text="${planning.heureDepart}"></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Liberee</span>
+                                    <span th:text="${planning.heureLiberee}"></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Duree</span>
+                                    <span th:text="${planning.dureeMinutes} + ' min'"></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Passages</span>
+                                    <span th:text="${planning.voiture.nbTrajet}"></span>
+                                </div>
+                            </div>
+
+                            <div class="subsection">
+                                <div class="subsection__title">Passagers lors de ce trajet</div>
+                                <div th:each="p, pStat : ${planningsByGroup[groupStat.index]}"
+                                     th:if="${p.voiture != null and p.voiture.idVoiture == planning.voiture.idVoiture}"
+                                     class="list-item">
+                                    <span class="badge" th:text="'#' + ${p.reservation.idReservation}"></span>
+                                    <strong th:text="${p.reservation.prenom} + ' ' + ${p.reservation.nom}"></strong> &nbsp;|&nbsp;
+                                    <span th:text="${p.reservation.nombrePersonnes} + ' personne(s)'"></span> &nbsp;|&nbsp;
+                                    <span th:text="${p.reservation.dateHeureArrivee}"></span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${groupedReservations == null}" class="empty">
+            Aucune reservation a afficher.
+        </div>
+    </div>
+</body>
+</html>

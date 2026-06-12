@@ -1,0 +1,160 @@
+• vitesse : 20 km/h
+• temps_attente : 30 min
+• distance_proximite : 5 km
+
+
+Hotel1:
+  Distance aéroport : 10 km
+
+Hotel2:
+  Distance aéroport : 20 km
+
+Hotel3:
+  Distance aéroport : 15 km
+
+
+Voiture A : 
+- v1
+
+nbPlaces : 4
+TypeCarburant : Essence
+
+Voiture B :
+- v2
+nbPlaces : 2          
+TypeCarburant : Diesel
+
+Voiture C :
+- v3
+nbPlaces : 15
+TypeCarburant : Electrique
+
+Voiture D :
+- v3
+nbPlaces : 15
+TypeCarburant : Electrique
+
+Client 1:
+  Hotel1
+  places : 3
+  HeureD'arrivee : 14:00
+
+Client 2:
+  Hotel2
+  places : 2
+  HeureD'arrivee : 14:20
+
+  Client 3:
+  Hotel3  
+  places : 10
+  HeureD'arrivee : 15:00
+
+Premier cas :
+Voiture A -> Client 1 mais dispo jusqu'à 14:30 car temps_attente 30 min
+
+  - place dispo : 1 (ne peut pas prendre Client 2)
+Voiture B -> Client 2 mais dispo jusqu'à 14:50 car temps_attente 30 min
+
+  - place dispo :  0 
+  -si plus de place dispo départ direct
+
+Voiture C -> Client 3 mais dispo jusqu'à 15:30 car temps_attente 30 min
+  - place dispo : 5
+
+
+Deuxième cas :
+  -> changement des places des voitures
+  Voiture A : 
+  - v1
+  nbPlaces : 5
+  TypeCarburant : Essence
+
+  Voiture B :
+  - v2
+  nbPlaces : 4         
+  TypeCarburant : Diesel
+
+  Voiture C :
+  - v3
+  nbPlaces : 10
+  TypeCarburant : Electrique
+
+  Voiture D :
+  - v3
+  nbPlaces : 10
+  TypeCarburant : Electrique
+
+
+
+  Client 1:
+  Hotel1
+  places : 3
+  HeureD'arrivee : 14:00
+
+Client 2:
+  Hotel2
+  places : 2
+  HeureD'arrivee : 14:20
+
+  Client 3:
+  Hotel3  
+  places : 10
+  HeureD'arrivee : 15:00
+
+
+Voiture A -> Client 1 mais dispo jusqu'à 14:30 car temps_attente 30 min
+
+  - place dispo : 2 
+    - peut prendre Client 2 car même hotel ou != hotel mais distance < distance_proximite
+    - mais si hotel different et distance entre hotel >= distance_proximite et toutes les voitures indispo dans le temps d'attente 
+      -  on met quand même le client dans la voiture (meme si place insuffisante)
+      - On emmène le client ayant hotel le plus proche en priorité
+    Sinon si autre voiture dispo on prend autre voiture 
+
+
+Voiture B -> Client 2 mais dispo jusqu'à 14:50 car temps_attente 30 min
+  - place dispo : 2 (ne peut pas prendre Client 3 car place insuffisante)
+
+Voiture C -> Client 3 mais dispo jusqu'à 15:30 car temps_attente 30 min
+  - place dispo : 0
+
+
+
+
+
+
+
+  // a part
+
+  client 1 : 6 places 
+  v 1 = 6places 
+
+
+  Client 2 : 4 places
+  v2 = 4 places
+
+  Client 3 : 12 places
+  Plus de voiture dispo
+  
+  v1 de retout 
+  v2 de retour
+  
+  Mais pas de place suffisante -> erreur
+  Client 4 : 1 place
+  Client 5 : 2 places
+
+  regarder si v1 / v2 de retour 
+  et si v1.nbPlaces >= client4.places 
+  et si v1.nbPlaces.reste >= client4.places + client5.places
+
+  sinon c5 dans v2 et reste dans v2 = 2 places  
+
+
+
+  Hotel1
+  distance aéroport : 8 km 
+
+  Hotel2
+  distance aéroport : 15 km
+
+  

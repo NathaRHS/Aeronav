@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distances entre hotels</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div th:replace="fragments/header :: appHeader"></div>
+<div class="container">
+    <div class="page-header">
+        <h1>Distances entre hotels</h1>
+        <p class="subtitle">Definir les distances utilisees pour la planification des trajets.</p>
+    </div>
+
+    <div class="card">
+        <h2>Ajouter ou modifier une distance</h2>
+        <form id="distanceForm">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="idHotelDepart">Hotel depart *</label>
+                    <select id="idHotelDepart" required></select>
+                </div>
+                <div class="field">
+                    <label for="idHotelArrivee">Hotel arrivee *</label>
+                    <select id="idHotelArrivee" required></select>
+                </div>
+                <div class="field field--full">
+                    <label for="distanceEntreHotel">Distance (km) *</label>
+                    <input id="distanceEntreHotel" type="number" min="0" required>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit">Enregistrer</button>
+                <button type="button" class="btn-secondary" onclick="resetForm()">Reinitialiser</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Liste des distances</h2>
+        <div id="distanceList"><p class="subtitle">Chargement...</p></div>
+    </div>
+</div>
+
+<script>
+    const API_DISTANCE = '/api/distance-hotels';
+    const API_HOTELS = '/api/hotels';
+    let hotelsById = {};
+
+    window.addEventListener('load', () => {
+        loadHotelsForSelects();
+        loadDistances();
+    });
+
+    function loadHotelsForSelects() {
+        fetch(API_HOTELS)
+            .then(response => response.json())
+            .then(hotels => {
+                hotelsById = {};
+                hotels.forEach(h => {
+                    hotelsById[h.idHotel] = h;
+                });
+
+                const options = ['<option value="">-- Choisir --</option>']
+                    .concat(hotels.map(h => `<option value="${h.idHotel}">${h.idHotel} - ${h.nom}</option>`))
+                    .join('');
+
+                document.getElementById('idHotelDepart').innerHTML = options;
+                document.getElementById('idHotelArrivee').innerHTML = options;
+            })
+            .catch(error => console.error('Erreur chargement hotels:', error));
+    }
+
+    function loadDistances() {
+        fetch(API_DISTANCE)
+            .then(response => response.json())
+            .then(distances => renderDistances(distances))
+            .catch(error => {
+                console.error('Erreur chargement distances:', error);
+                document.getElementById('distanceList').innerHTML = '<div class="empty">Erreur de chargement.</div>';
+            });
+    }
+
+    function hotelLabel(idHotel) {
+        const hotel = hotelsById[idHotel];
+        return hotel ? `${idHotel} - ${hotel.nom}` : `${idHotel}`;
+    }
+
+    function renderDistances(distances) {
+        const container = document.getElementById('distanceList');
+        if (!distances || distances.length === 0) {
+            container.innerHTML = '<div class="empty">Aucune distance enregistree.</div>';
+            return;
+        }
+
+        let html = '<table><thead><tr><th>ID</th><th>Depart</th><th>Arrivee</th><th>Distance</th><th>Actions</th></tr></thead><tbody>';
+        distances.forEach(d => {
+            html += `
+                <tr>
+                    <td>${d.idDistance}</td>
+                    <td>${hotelLabel(d.idHotelDepart)}</td>
+                    <td>${hotelLabel(d.idHotelArrivee)}</td>
+                    <td>${d.distanceEntreHotel} km</td>
+                    <td class="actions">
+                        <button class="btn-edit" onclick="editDistance(${d.idDistance})">Modifier</button>
+                        <button class="btn-delete" onclick="deleteDistance(${d.idDistance})">Supprimer</button>
+                    </td>
+                </tr>
+            `;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    document.getElementById('distanceForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const payload = {
+            idHotelDepart: parseInt(document.getElementById('idHotelDepart').value, 10),
+            idHotelArrivee: parseInt(document.getElementById('idHotelArrivee').value, 10),
+            distanceEntreHotel: parseInt(document.getElementById('distanceEntreHotel').value, 10)
+        };
+
+        if (!payload.idHotelDepart || !payload.idHotelArrivee) {
+            alert('Veuillez selectionner les deux hotels.');
+            return;
+        }
+        if (payload.idHotelDepart === payload.idHotelArrivee) {
+            alert('Depart et arrivee doivent etre differents.');
+            return;
+        }
+
+        const id = document.getElementById('distanceForm').dataset.distanceId;
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_DISTANCE}/${id}` : API_DISTANCE;
+
+        fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+            .then(response => {
+                if (response.ok) {
+                    alert('Distance enregistree.');
+                    resetForm();
+                    loadDistances();
+                } else {
+                    alert('Erreur lors de l\'enregistrement.');
+                }
+            })
+            .catch(error => console.error('Erreur enregistrement:', error));
+    });
+
+    function editDistance(id) {
+        fetch(`${API_DISTANCE}/${id}`)
+            .then(response => response.json())
+            .then(distance => {
+                document.getElementById('idHotelDepart').value = distance.idHotelDepart;
+                document.getElementById('idHotelArrivee').value = distance.idHotelArrivee;
+                document.getElementById('distanceEntreHotel').value = distance.distanceEntreHotel;
+                document.getElementById('distanceForm').dataset.distanceId = id;
+                document.querySelector('#distanceForm button[type="submit"]').textContent = 'Mettre a jour';
+            })
+            .catch(error => console.error('Erreur lecture distance:', error));
+    }
+
+    function deleteDistance(id) {
+        if (!confirm('Supprimer cette distance ?')) {
+            return;
+        }
+        fetch(`${API_DISTANCE}/${id}`, { method: 'DELETE' })
+            .then(response => {
+                if (response.ok) {
+                    loadDistances();
+                } else {
+                    alert('Erreur suppression.');
+                }
+            })
+            .catch(error => console.error('Erreur suppression:', error));
+    }
+
+    function resetForm() {
+        document.getElementById('distanceForm').reset();
+        delete document.getElementById('distanceForm').dataset.distanceId;
+        document.querySelector('#distanceForm button[type="submit"]').textContent = 'Enregistrer';
+    }
+</script>
+</body>
+</html>

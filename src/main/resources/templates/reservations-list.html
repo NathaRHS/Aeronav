@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liste des reservations</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+    <div th:replace="fragments/header :: appHeader"></div>
+    <div class="container">
+        <div class="page-header">
+            <h1>Liste des reservations</h1>
+            <p class="subtitle">Toutes les reservations enregistrees.</p>
+        </div>
+
+        <div class="card">
+            <div class="form-actions" style="margin-top: 0; margin-bottom: 20px;">
+                <a class="btn" href="/reservations/creation">Nouvelle reservation</a>
+                <button type="button" class="btn-secondary" onclick="loadReservations()">Rafraichir</button>
+            </div>
+            <div id="reservationsList">
+                <p class="subtitle">Chargement...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api/reservations';
+
+        window.addEventListener('load', loadReservations);
+
+        function loadReservations() {
+            fetch(API_URL)
+                .then(response => response.json())
+                .then(reservations => displayReservations(reservations))
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    document.getElementById('reservationsList').innerHTML =
+                        '<div class="empty">Erreur de chargement.</div>';
+                });
+        }
+
+        function formatDate(value) {
+            if (!value) return '';
+            const date = new Date(value);
+            return isNaN(date.getTime()) ? value : date.toLocaleString('fr-FR');
+        }
+
+        function displayReservations(reservations) {
+            const list = document.getElementById('reservationsList');
+            if (!reservations || reservations.length === 0) {
+                list.innerHTML = '<div class="empty">Aucune reservation enregistree.</div>';
+                return;
+            }
+
+            let html = '<table><thead><tr><th>ID</th><th>Nom</th><th>Prenom</th><th>Personnes</th><th>Date arrivee</th><th>Hotel</th><th>Actions</th></tr></thead><tbody>';
+            reservations.forEach(r => {
+                const hotel = r.hotel ? r.hotel.nom : '';
+                html += `
+                    <tr>
+                        <td>${r.idReservation}</td>
+                        <td><strong>${r.nom || ''}</strong></td>
+                        <td>${r.prenom || ''}</td>
+                        <td>${r.nombrePersonnes || ''}</td>
+                        <td>${formatDate(r.dateHeureArrivee)}</td>
+                        <td>${hotel}</td>
+                        <td class="actions">
+                            <button class="btn-delete" onclick="deleteReservation(${r.idReservation})">Supprimer</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            html += '</tbody></table>';
+            list.innerHTML = html;
+        }
+
+        function deleteReservation(id) {
+            if (!confirm('Etes-vous sur de vouloir supprimer cette reservation ?')) {
+                return;
+            }
+            fetch(`${API_URL}/${id}`, { method: 'DELETE' })
+                .then(response => {
+                    if (response.ok) {
+                        loadReservations();
+                    } else {
+                        alert('Erreur lors de la suppression.');
+                    }
+                })
+                .catch(error => console.error('Erreur:', error));
+        }
+    </script>
+</body>
+</html>

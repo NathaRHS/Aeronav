@@ -1,0 +1,161 @@
+================================
+LISTE DES FONCTIONS À IMPLÉMENTER
+================================
+
+================================
+1. CLASSE WRAPPER: VoitureState
+================================
+Responsabilité: Tracker l'état d'une voiture pendant l'allocation
+
+Attributs:
+  - Voiture voiture
+  - LocalDateTime heureLiberee (quand la voiture revient)
+  - int placesRestantes (nombre de places non utilisées)
+  - List<Reservation> clients (clients dans cette voiture)
+
+Méthodes:
+  - estDisponible(LocalDateTime heure): boolean
+    → retourne true si heureLiberee.isBefore(heure)
+  - retirePlace(int nbPersonnes): void
+    → placesRestantes -= nbPersonnes
+  - ajoutClient(Reservation res): void
+    → clients.add(res)
+  - getPlacesRestantes(): int
+
+================================
+2. CLASSE SERVICE: VoitureStateService
+================================
+Responsabilité: Gérer la liste d'états des voitures
+
+Méthodes:
+  
+  a) creerEtatVoitures(List<Voiture> voitures): List<VoitureState>
+     → Crée un VoitureState pour chaque voiture avec:
+        - heureLiberee = DateTime très ancien (= libre maintenant)
+        - placesRestantes = voiture.getNbPlaces()
+        - clients = liste vide
+  
+  b) trouvVoituresDisponibles(List<VoitureState> etats, LocalDateTime heure): List<VoitureState>
+     → Retourne voitures où estDisponible(heure) == true
+     → Filtre aussi celles avec places >= 0
+  
+  c) selectionnerVoiture(List<VoitureState> aptes, int nbPlacesRequises): VoitureState
+     → Applique critères de sélection dans l'ordre:
+        1) Plus petite capacité (placesRestantes >= nbPlacesRequises)
+        2) Déjà roulée (nbKmParcourus max)
+        3) Type carburant (à définir)
+        4) Random
+  
+  d) assignerVoiture(VoitureState etat, Reservation res, int tempsAttenteMin): VoitureState
+     → Met à jour l'état:
+        - etat.ajoutClient(res)
+        - etat.retirePlace(res.getNombrePersonnes())
+        - etat.heureLiberee = res.getDateHeureArrivee() + tempsAttenteMin
+     → Retourne l'état mis à jour
+  
+  e) afficherEtatVoitures(List<VoitureState> etats): void
+     → Affiche chaque voiture avec ses clients, heure libération, places restantes
+     → DEBUG: helpful pour vérifier l'algorithme
+
+================================
+3. CLASSE SERVICE REFACTORISÉE: ReservationService
+================================
+
+Méthodes existantes (à garder):
+  - optimize(LocalDate date): List<Reservation>
+  - getTemps(...): void (groupement par temps)
+  - getVoitureMety(...): Voiture
+
+Méthodes à MODIFIER/CRÉER:
+
+  a) getPlanning(LocalDate date): List<Planning>
+     [COMPLÈTEMENT REÉCRITE]
+     
+     Logique:
+     1) Récupérer réservations du jour: optimize(date)
+     2) Créer états voitures: VoitureStateService.creerEtatVoitures(...)
+     3) TRIER réservations par heure d'arrivée
+     
+     4) BOUCLE pour chaque réservation:
+        - Trouver voitures disponibles et libérées
+        - Filtrer par capacité (nbPlaces >= nbPersonnes)
+        - Sélectionner meilleure voiture
+        - Assigner la réservation
+        - Créer Planning(reservation, voiture)
+        - Ajouter à liste plannings
+     
+     5) Retourner List<Planning>
+
+  b) essayerAjouterMemeVoiture(VoitureState etat, Reservation res, 
+                               List<Reservation> nonTraitees, int tempsAttenteMax): boolean
+     [NOUVELLE]
+     
+     Responsabilité: Vérifier si on peut ajouter une réservation à une voiture existante
+     
+     Conditions (tous les && pour ajouter):
+     - etat.placesRestantes >= res.getNombrePersonnes()
+     - res.getDateHeureArrivee() <= etat.heureLiberee + tempsAttenteMax
+     - res.getIdHotel() == hotelDernier Client OU distance < 5km
+     
+     Si tout OK:
+     - Ajouter à même voiture
+     - Marquer réservation comme traitée
+     - return true
+     
+     Else:
+     - return false
+
+  c) calculerHeureLiberee(Reservation res, int tempsAttenteMin): LocalDateTime
+     [NOUVELLE - utilitaire]
+     → return res.getDateHeureArrivee() + tempsAttenteMin
+
+  d) generatePlanningForDay(LocalDate date): List<Planning>
+     [EXISTANTE - à garder]
+     → Simple orchestrateur qui appelle getPlanning(date)
+
+================================
+4. MODIFICATIONS ENTITY/BEAN
+================================
+
+Classe Hotel:
+  - Ajouter getter/setter pour le NOM (res.getHotel().getNom())
+  - Ajouter attribut pour distance si besoin
+
+Classe Reservation:
+  - Vérifier getHotel() retourne l'objet Hotel, pas l'ID
+  - Ajouter attribut dateHeureArrivee si absent
+
+Classe Voiture:
+  - Garder getNbPlaces()
+  - Garder getMarque(), getTypeCarburant()
+  - Ajouter attribut nbKmParcourus (pour critère "déjà roulé")
+
+Classe Planning:
+  - Constructor: Planning(Reservation res, Voiture voiture)
+  - Getters: getReservation(), getVoiture()
+
+================================
+5. AFFICHAGE MAIN
+================================
+
+Modifications:
+  - Afficher réservations AVANT traitement (vérifier que toutes sont récupérées)
+  - Afficher état des voitures PENDANT (DEBUG)
+  - Afficher planning FINAL avec:
+    * Nom de l'hôtel (pas l'adresse mémoire)
+    * Ordre chronologique
+    * Toutes les réservations assignées
+
+================================
+ORDRE D'IMPLÉMENTATION RECOMMANDÉ
+================================
+
+1. Créer classe VoitureState
+2. Créer classe VoitureStateService
+3. Refactoriser ReservationService.getPlanning()
+4. Ajouter méthodes utilitaires
+5. Tester avec le Main
+6. Modifier affichage Main
+7. Vérifier que CAS 1, 2, 3 fonctionnent
+
+================================

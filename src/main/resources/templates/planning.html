@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planning des reservations</title>
+    <link rel="icon" type="image/png" href="/img/favicon.png">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+    <div th:replace="fragments/header :: appHeader"></div>
+    <div class="container">
+        <div class="page-header">
+            <h1>Planning des reservations</h1>
+            <p class="subtitle">Groupes de reservations et voitures attribuees par date.</p>
+        </div>
+
+        <div class="toolbar">
+            <div class="field">
+                <label for="dateInput">Date</label>
+                <input type="date" id="dateInput" th:value="${date}">
+            </div>
+            <div class="field">
+                <label for="waitInput">Temps d'attente (min)</label>
+                <input type="number" id="waitInput" th:value="${wait}" min="5" max="120">
+            </div>
+            <button onclick="changePlanningDate()">Charger</button>
+        </div>
+
+        <script>
+            function changePlanningDate() {
+                const selectedDate = document.getElementById('dateInput').value;
+                const waitTime = document.getElementById('waitInput').value;
+                if (selectedDate && waitTime) {
+                    window.location.href = '/planning?date=' + selectedDate + '&wait=' + waitTime;
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                document.getElementById('dateInput').addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') changePlanningDate();
+                });
+                document.getElementById('waitInput').addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') changePlanningDate();
+                });
+            });
+        </script>
+
+        <div class="info-bar">
+            <strong>Date :</strong> <span th:text="${date}"></span> &nbsp;|&nbsp;
+            <strong>Temps d'attente :</strong> <span th:text="${wait}"></span> minutes
+        </div>
+
+        <div th:if="${groupes != null and groupes.size() > 0}">
+            <div th:each="groupe : ${groupes}" class="group">
+                <div class="group__title">Groupe <span th:text="${groupe.numeroGroupe}"></span></div>
+
+                <div class="subsection">
+                    <div class="subsection__title">Reservations du groupe (<span th:text="${groupe.reservations.size()}"></span>)</div>
+                    <div th:each="r : ${groupe.reservations}" class="list-item">
+                        <span class="badge" th:text="'ID ' + ${r.idReservation}"></span>
+                        <strong th:text="${r.nom} + ' ' + ${r.prenom}"></strong> &nbsp;|&nbsp;
+                        <span th:text="${r.nombrePersonnes} + ' personne(s)'"></span> &nbsp;|&nbsp;
+                        <span th:text="${r.dateHeureArrivee}"></span> &nbsp;|&nbsp;
+                        <span th:text="${r.hotel.nom}"></span>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <div class="subsection__title">Plannings attribues (<span th:text="${groupe.plannings.size()}"></span>)</div>
+                    <div th:if="${groupe.plannings.size() > 0}">
+                        <div th:each="planning : ${groupe.plannings}" class="detail-card">
+                            <span class="badge" th:text="'Resa ' + ${planning.reservation.idReservation}"></span>
+                            <span class="badge" th:text="${planning.reservation.nom}"></span>
+                            <br/>
+                            <span th:if="${planning.voiture != null}">
+                                <strong>Voiture :</strong> <span th:text="${planning.voiture.marque}"></span>
+                                (<span th:text="${planning.voiture.nbPlaces} + ' places'"></span>) &nbsp;|&nbsp;
+                                <strong>Carburant :</strong> <span th:text="${planning.voiture.typeCarburant}"></span>
+                            </span>
+                            <span th:if="${planning.voiture == null}" class="badge">Aucune voiture attribuee</span>
+                            <br/>
+                            <strong>Depart :</strong> <span th:text="${planning.heureDepart}"></span> &nbsp;|&nbsp;
+                            <strong>Liberee :</strong> <span th:text="${planning.heureLiberee}"></span> &nbsp;|&nbsp;
+                            <strong>Duree :</strong> <span th:text="${planning.dureeMinutes} + ' min'"></span>
+                        </div>
+                    </div>
+                    <div th:if="${groupe.plannings.size() == 0}">
+                        <p class="subtitle">Aucun planning attribue.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${groupes == null or groupes.size() == 0}" class="empty">
+            Aucun groupe de reservations trouve pour la date specifiee.
+        </div>
+    </div>
+</body>
+</html>

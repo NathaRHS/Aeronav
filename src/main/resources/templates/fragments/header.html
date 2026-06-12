@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<body>
+<nav th:fragment="appHeader" class="app-nav">
+    <div class="app-nav__inner">
+        <a href="/" class="app-nav__brand" aria-label="AeroNav - Accueil">
+            <img src="/img/logo.png" alt="AeroNav" class="app-nav__logo">
+        </a>
+        <div class="app-nav__links">
+            <a href="/planning?date=2026-03-01&amp;wait=30">Planning</a>
+            <a href="/reservations">Reservations</a>
+            <a href="/api/reservations/groupes">Groupes</a>
+            <a href="/hotels">Hotels</a>
+            <a href="/voitures">Voitures</a>
+            <a href="/distance-hotels">Distances</a>
+            <a href="/reservations/creation">Nouvelle reservation</a>
+            <a href="/voitures/creation">Nouvelle voiture</a>
+        </div>
+    </div>
+</nav>
+</body>
+</html>

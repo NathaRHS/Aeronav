@@ -1,0 +1,154 @@
+    ================================
+SCÉNARIOS D'ALLOCATION DES VOITURES
+================================
+
+PARAMÈTRES CONSTANTS:
+- temps_attente : 30 minutes
+- vitesse : 20 km/h
+- distance_proximite : 5 km
+
+================================
+CAS 1 : 1 RÉSERVATION + 1 VOITURE
+================================
+Condition: Une seule réservation et une seule voiture disponible
+Logique:
+  - Vérifier si la voiture a assez de places
+  - Si oui → assigner la voiture
+  - Si non → pas d'allocation
+
+Exemple:
+  Réservation: 8 personnes
+  Voiture: 8 places
+  → Allocation valide
+
+================================
+CAS 2 : 1 RÉSERVATION + PLUSIEURS VOITURES
+================================
+Condition: Une seule réservation, plusieurs voitures disponibles
+Logique:
+  1. Filtrer les voitures avec ASSEZ DE PLACES pour la réservation
+  2. Appliquer les critères de sélection (dans l'ordre):
+     a) Voiture avec la PLUS PETITE CAPACITÉ correspondante
+     b) Si égalité → celle qui a DÉJÀ ROULÉ (plus de km)
+     c) Si égalité → préférence CARBURANT (à définir)
+     d) Si égalité → RANDOM
+  3. Assigner la voiture
+
+Exemple:
+  Réservation: 3 personnes
+  Voitures disponibles: 
+    - Peugeot (4 places) ← CHOIX (plus petit)
+    - Renault (8 places)
+    - Voiture C (15 places)
+  → Peugeot assignée
+
+================================
+CAS 3 : PLUSIEURS RÉSERVATIONS
+================================
+Condition: Plusieurs réservations à traiter
+
+ALGORITHME:
+1. TRIER les réservations par heure d'arrivée (croissante)
+
+2. POUR CHAQUE RÉSERVATION (dans l'ordre chronologique):
+   
+   a) CHERCHER VOITURES DISPONIBLES ET LIBÉRÉES À TEMPS:
+      - Voiture n'est pas occupée OU
+      - Voiture sera libérée AVANT l'heure d'arrivée de la réservation
+   
+   b) FILTRER par CAPACITÉ:
+      - Au minimum "nombrePersonnes" places libres dans la voiture
+   
+   c) ASSIGNER VOITURE selon critères Cas 2:
+      - Plus petite capacité
+      - Déjà roulé
+      - Carburant
+      - Random
+   
+   d) METTRE À JOUR L'ÉTAT DE LA VOITURE:
+      - Réduire places restantes
+      - Calculer heure de libération (= heure d'arrivée + 30 min attente)
+      - Marquer comme OCCUPÉE jusqu'à libération
+
+3. ESSAYER AJOUTER AUTRES CLIENTS À MÊME VOITURE:
+   - Si places restantes disponibles ET
+   - Si heure d'arrivée client <= heure de libération voiture + 30 min ET
+   - Si même hôtel OU distance < 5 km
+   → Ajouter le client à la même voiture
+   → Mettre à jour places restantes
+   
+4. SI PAS ASSEZ DE PLACE:
+   → Passer à la réservation suivante
+   → Chercher nouvelle voiture (retour à étape 2b)
+
+================================
+EXEMPLE CONCRET AVEC 5 RÉSERVATIONS:
+================================
+
+Réservations triées:
+1. 08:30 - 8 personnes - Hôtel 1
+2. 08:45 - 8 personnes - Hôtel 1
+3. 12:00 - 1 personne - Hôtel 2
+4. 15:38 - 8 personnes - Hôtel 1
+5. 21:15 - 3 personnes - Hôtel 2
+
+Voitures disponibles:
+- Renault: 8 places
+- Peugeot: 4 places
+- Voiture C: 15 places
+- Voiture D: 15 places
+
+ALLOCATION:
+
+ÉTAPE 1 (08:30 - 8 personnes):
+  ✓ Cherche voiture 8 places min: Renault, C, D
+  ✓ Plus petite: Renault (8)
+  ✓ Assigne Renault
+  ✓ Renault libérée à: 08:30 + 30min = 09:00
+  ✓ Places restantes Renault: 0
+
+ÉTAPE 2 (08:45 - 8 personnes):
+  ✓ 15 min après Réservation 1
+  ✓ Renault sera libérée à 09:00 (15 min avant 08:45) → NON DISPONIBLE
+  ✓ Cherche voiture 8 places min LIBRE: C, D (pas Renault)
+  ✓ Plus petite: C ou D (15 places) → prendre C
+  ✓ Assigne Voiture C
+  ✓ C libérée à: 08:45 + 30min = 09:15
+  ✓ Places restantes C: 7
+
+ÉTAPE 3 (12:00 - 1 personne):
+  ✓ Voitures disponibles: Renault (09:00 libérée), Peugeot, D
+  ✓ Renault libérée depuis 09:00 → OK
+  ✓ Peugeot 4 places
+  ✓ Plus petite: Peugeot
+  ✓ Assigne Peugeot
+  ✓ Peugeot libérée à: 12:30
+  ✓ Places restantes Peugeot: 3
+
+ÉTAPE 4 (15:38 - 8 personnes):
+  ✓ Renault libérée depuis 09:00 → DISPONIBLE
+  ✓ Peugeot libérée depuis 12:30 → DISPONIBLE
+  ✓ C libérée depuis 09:15 → DISPONIBLE
+  ✓ Cherche 8 places min: Renault (8), C (15), D (15)
+  ✓ Plus petite: Renault
+  ✓ Assigne Renault
+  ✓ Renault libérée à: 15:38 + 30min = 16:08
+  ✓ Places restantes Renault: 0
+
+ÉTAPE 5 (21:15 - 3 personnes):
+  ✓ Renault libérée depuis 16:08 → DISPONIBLE
+  ✓ Peugeot libérée depuis 12:30 → DISPONIBLE
+  ✓ C libérée depuis 09:15 → DISPONIBLE
+  ✓ D jamais utilisée → DISPONIBLE
+  ✓ Cherche 3 places min: Peugeot (4), Renault (8), C (15), D (15)
+  ✓ Plus petite: Peugeot
+  ✓ Assigne Peugeot
+  ✓ Peugeot libérée à: 21:45
+  ✓ Places restantes Peugeot: 0
+
+RÉSULTAT FINAL:
+Allocation #1: Réservation 08:30 (8p) → Renault
+Allocation #2: Réservation 08:45 (8p) → Voiture C
+Allocation #3: Réservation 12:00 (1p) → Peugeot
+Allocation #4: Réservation 15:38 (8p) → Renault
+Allocation #5: Réservation 21:15 (3p) → Peugeot
